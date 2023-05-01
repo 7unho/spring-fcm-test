@@ -7,6 +7,7 @@
 
 import React, {useEffect} from 'react';
 import type {PropsWithChildren} from 'react';
+import { Alert } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import {
   SafeAreaView,
@@ -29,10 +30,6 @@ import {
 type SectionProps = PropsWithChildren<{
   title: string;
 }>;
-
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('[Background Remote Message]', remoteMessage);
-});
 
 function Section({children, title}: SectionProps): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -61,21 +58,40 @@ function Section({children, title}: SectionProps): JSX.Element {
 }
 
 function App(): JSX.Element {
+
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
-  const getFcmToken = async () => {
-    const token = await messaging().getToken();
-    console.log('[FCM Token]', token);
-  };
+  // const getFcmToken = async () => {
+  //   const token = await messaging().getToken();
+  //   console.log('[FCM Token]', token);
+  // };
+
+  async function requestUserPermission() {
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    console.log('[Authorization Status]', authStatus);
+    if (enabled) {
+      await messaging().getToken().then(token => {
+        console.log('[FCM Token]', token);
+      }).catch(err => {
+        console.log('[FCM Token Error]', err);
+      });
+    }
+  }
 
   useEffect(() => {
-    getFcmToken();
+    requestUserPermission();
+    // getFcmToken();
     const unsubscribe = messaging().onMessage(async remoteMessage => {
-      console.log('[Remote Message]', remoteMessage);
+      Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
+      console.log('[FCM Message]', remoteMessage);
+      console.log('[TEST]');
     });
     return unsubscribe;
   }, []);
